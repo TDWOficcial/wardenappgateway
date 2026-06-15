@@ -17,38 +17,46 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Verifying license data structure...</p>
+    <p id="status-desc">Verifying session data structure...</p>
 
     <script>
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
-        // Telegram'ın o saniyede ürettiği şifreli açılış verisini alıyoruz (initData)
         const initData = window.Telegram.WebApp.initData;
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
         const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
 
-        // EĞER KULLANICI /remove EDİLDİYSE VEYA ESKİ MESAJI REFRESH EDİYORSA:
-        // Telegram sunucuları auth_date süresi geçtiği veya session koptuğu için veriyi geçersiz kılar.
+        // Admin ID'si (Her zaman doğrudan geçiş hakkı var)
+        const adminId = 5841291305;
+
         if (initData && userId) {
             
-            // Verinin taze ve canlı olup olmadığını saniyeler üzerinden test ediyoruz
-            const urlParams = new URLSearchParams(initData);
-            const authDate = parseInt(urlParams.get('auth_date'));
-            const currentTime = Math.floor(Date.now() / 1000);
-
-            // Eğer adam eski mesaja basıp girmeye çalışıyorsa (5 dakikadan eski veriyle) direkt blokla!
-            if (currentTime - authDate > 300) { 
-                showError("License Expired", "Your active session has ended. Please type /start in the bot again.");
+            if (userId === adminId) {
+                // Admin ise sorgusuz sualsiz yönlendir
+                allowAccess();
             } else {
-                // Her şey taze ve canlıysa madenci sayfasına fırlat
-                document.getElementById("status-desc").innerText = "License verified! Redirecting...";
-                setTimeout(() => {
-                    window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
-                }, 1000);
+                // Normal kullanıcılar için zaman kontrolü
+                const urlParams = new URLSearchParams(initData);
+                const authDate = parseInt(urlParams.get('auth_date'));
+                const currentTime = Math.floor(Date.now() / 1000);
+
+                // Eğer adam eski mesaja basıp girmeye çalışıyorsa (5 dakikadan eski veriyle) direkt engelle
+                if (currentTime - authDate > 300) { 
+                    showError("License Expired", "Your active session has ended. Please type /start in the bot again.");
+                } else {
+                    allowAccess();
+                }
             }
         } else {
             showError("Access Denied", "Please open this app inside the Telegram Bot.");
+        }
+
+        function allowAccess() {
+            document.getElementById("status-desc").innerText = "License verified! Redirecting...";
+            setTimeout(() => {
+                window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
+            }, 1000);
         }
 
         function showError(title, desc) {
