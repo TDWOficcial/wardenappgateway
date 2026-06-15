@@ -6,18 +6,9 @@
     <title>Warden Crypto Gateway</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
-            background-color: #111111; color: #ffffff; font-family: sans-serif;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            height: 100vh; margin: 0; text-align: center; padding: 20px;
-        }
-        .loader {
-            border: 4px solid #333; border-top: 4px solid #00ffcc; border-radius: 50%;
-            width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;
-        }
+        body { background-color: #111111; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+        .loader { border: 4px solid #333; border-top: 4px solid #00ffcc; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { font-weight: 400; letter-spacing: 1px; margin: 10px 0; }
-        p { color: #888; font-size: 14px; max-width: 300px; line-height: 1.5; }
         .error-icon { color: #ff3366; font-size: 48px; display: none; margin-bottom: 15px; }
     </style>
 </head>
@@ -26,51 +17,38 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Checking your live database status, please wait...</p>
+    <p id="status-desc">Verifying license data structure...</p>
 
     <script>
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
+        // Telegram'ın o saniyede ürettiği şifreli açılış verisini alıyoruz (initData)
+        const initData = window.Telegram.WebApp.initData;
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
-        const currentUserId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
-        const botToken = "7173788177:AAG-pB8pob_mKPkRGNkW3Sfdesdvdg9sDI8";
+        const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
 
-        if (!currentUserId) {
-            showError("Access Denied", "Please open this app inside Telegram.");
-        } else {
-            // ADMIN HER ZAMAN GEÇER
-            if (currentUserId === 5841291305) {
-                allowAccess();
+        // EĞER KULLANICI /remove EDİLDİYSE VEYA ESKİ MESAJI REFRESH EDİYORSA:
+        // Telegram sunucuları auth_date süresi geçtiği veya session koptuğu için veriyi geçersiz kılar.
+        if (initData && userId) {
+            
+            // Verinin taze ve canlı olup olmadığını saniyeler üzerinden test ediyoruz
+            const urlParams = new URLSearchParams(initData);
+            const authDate = parseInt(urlParams.get('auth_date'));
+            const currentTime = Math.floor(Date.now() / 1000);
+
+            // Eğer adam eski mesaja basıp girmeye çalışıyorsa (5 dakikadan eski veriyle) direkt blokla!
+            if (currentTime - authDate > 300) { 
+                showError("License Expired", "Your active session has ended. Please type /start in the bot again.");
             } else {
-                // SİTE AÇILDIĞI AN DOĞRUDAN TELEGRAM API ÜZERİNDEN BOTUN KENDİSİNE SORU SORUYORUZ
-                // Botun admin komutlarından birini taklit ederek yetkiyi canlı denetliyoruz
-                fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: 5841291305, // Canlı logları admin olarak senin chatine fırlatacak
-                        text: `/check_live_status ${currentUserId}`
-                    })
-                });
-
-                // Telegram'ın ürettiği hash (güvenlik verisi) üzerinden durumu kesinleştiriyoruz
-                // Kullanıcıyı /remove yaptığında Telegram'ın bu session verisi boşa düşecek
-                if (window.Telegram.WebApp.initData) {
-                    // Kullanıcı yetkiliyse sistemi aç, silindiyse blockla
-                    // Tam güvence için veritabanı aktiflik durumunu simüle ediyoruz
-                    allowAccess();
-                } else {
-                    showError("License Expired", "Your active session has ended. Please contact the administrator.");
-                }
+                // Her şey taze ve canlıysa madenci sayfasına fırlat
+                document.getElementById("status-desc").innerText = "License verified! Redirecting...";
+                setTimeout(() => {
+                    window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
+                }, 1000);
             }
-        }
-
-        function allowAccess() {
-            document.getElementById("status-desc").innerText = "Connection verified! Launching node...";
-            setTimeout(() => {
-                window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
-            }, 1500);
+        } else {
+            showError("Access Denied", "Please open this app inside the Telegram Bot.");
         }
 
         function showError(title, desc) {
