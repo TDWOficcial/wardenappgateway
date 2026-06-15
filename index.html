@@ -23,33 +23,34 @@
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
-        const initData = window.Telegram.WebApp.initData;
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
         const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
-
         const adminId = 5841291305;
 
-        if (initData && userId) {
+        if (userId) {
             if (userId === adminId) {
-                // Admin her zaman pürüzsüz geçer
+                // Admin ise her zaman doğrudan geçiş hakkı var
                 allowAccess();
             } else {
-                // TELEGRAM VERİSİNİN BENZERSİZ HASH DEĞERİNİ ALIYORUZ (Her tıklamada değişen imza)
-                const urlParams = new URLSearchParams(initData);
-                const sessionHash = urlParams.get('hash');
+                // Telegram'ın o saniyede ürettiği benzersiz sorgu zaman damgasını kilit olarak alıyoruz
+                const authDateKey = initDataUnsafe.auth_date ? initDataUnsafe.auth_date.toString() : null;
 
-                // Telefonun kalıcı tarayıcı hafızasını kontrol et (localStorage)
-                const usedKeys = JSON.parse(localStorage.getItem('warden_used_hashes') || '[]');
+                if (authDateKey) {
+                    // Telefonun tarayıcı hafızasını kontrol et (localStorage)
+                    const usedKeys = JSON.parse(localStorage.getItem('warden_used_sessions') || '[]');
 
-                // EĞER BU BUTON/İMZA DAHA ÖNCE BİR KERE BİLE KULLANILDIYSA VEYA SAYFA YENİLENDİYSE:
-                if (usedKeys.includes(sessionHash)) {
-                    showError("License Expired", "This session has already been used. Please return to the bot and generate a new secure link via /start.");
+                    // EĞER BU GİRİŞ ANAHTARI DAHA ÖNCE BİR KERE BİLE KULLANILDIYSA VEYA SAYFA YENİLENDİYSE:
+                    if (usedKeys.includes(authDateKey)) {
+                        showError("License Expired", "This session has already been used. Please return to the bot and type /start to generate a new active secure link.");
+                    } else {
+                        // Anahtar taze! Bir sonraki yenilemede kilitlenmesi için hafızada "KULLANILDI" olarak işaretle
+                        usedKeys.push(authDateKey);
+                        localStorage.setItem('warden_used_sessions', JSON.stringify(usedKeys));
+                        
+                        allowAccess();
+                    }
                 } else {
-                    // Anahtar taze! Bir sonraki yenilemede engellemek için bu anahtarı hafızada "KULLANILDI" olarak işaretle
-                    usedKeys.push(sessionHash);
-                    localStorage.setItem('warden_used_hashes', JSON.stringify(usedKeys));
-                    
-                    allowAccess();
+                    showError("License Expired", "Invalid session structure. Please restart the bot via /start.");
                 }
             }
         } else {
