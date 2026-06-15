@@ -8,7 +8,7 @@
     <style>
         body { background-color: #111111; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
         .loader { border: 4px solid #333; border-top: 4px solid #00ffcc; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(3600deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .error-icon { color: #ff3366; font-size: 48px; display: none; margin-bottom: 15px; }
     </style>
 </head>
@@ -17,34 +17,36 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Validating live gateway permissions...</p>
+    <p id="status-desc">Verifying your session token...</p>
 
     <script>
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
+        // Telegram'ın o saniyede tarayıcıya fırlattığı ham açılış verisi
+        const initData = window.Telegram.WebApp.initData;
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
-        // Telegram uygulamasından gelen gerçek, manipüle edilemez kullanıcı ID'si
-        const realTelegramId = initDataUnsafe.user ? initDataUnsafe.user.id.toString() : null;
+        const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
 
-        // Butona tıklandığında linkin sonuna batan o parametre ID'si (?user=XXXXX)
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlUserId = urlParams.get('user');
+        const adminId = 5841291305;
 
-        const adminId = "5841291305";
-
-        if (realTelegramId) {
-            if (realTelegramId === adminId) {
-                // Admin her zaman sorgusuz geçer
+        if (initData && userId) {
+            if (userId === adminId) {
+                // Admin her zaman geçer
                 allowAccess();
             } else {
-                // KRİTİK KONTROL: Eğer adam /remove edildiyse, bota tekrar tıklasa bile 
-                // linkteki parametre güncellenemez. Telegram'ın gerçek ID'si ile eşleşmesi gerekir.
-                // Eğer adam eski butondan sızmaya çalışıyorsa urlUserId ve realTelegramId doğrulaması çöker.
-                if (urlUserId && realTelegramId === urlUserId) {
-                    allowAccess();
+                // Telegram'ın ürettiği ham verinin içindeki zaman parametrelerini ayrıştırıyoruz
+                const urlParams = new URLSearchParams(initData);
+                const authDate = parseInt(urlParams.get('auth_date')); // Butona ilk tıklandığı anın saniyesi
+                const currentTime = Math.floor(Date.now() / 1000); // Şu anki canlı saniye
+
+                // EĞER KULLANICI ESKİ MESAJDAKİ BUTONA BASTIYSA:
+                // Butonun tıklanma zamanı ile şu anki zaman arasında 60 saniyeden (1 dakika) fazla fark varsa geçersiz say.
+                if (!authDate || (currentTime - authDate > 60)) { 
+                    showError("License Expired", "Your active session has expired. Please go back to the bot and type /start to generate a new secure link.");
                 } else {
-                    showError("License Expired", "Your database license has been revoked by the administrator.");
+                    // Eğer buton taze ve yeni üretilmişse (yani adam silinmemiş ve bota yeni start vermişse) içeri al
+                    allowAccess();
                 }
             }
         } else {
@@ -52,14 +54,14 @@
         }
 
         function allowAccess() {
-            document.getElementById("status-desc").innerText = "License verified! Redirecting to secure miner...";
+            document.getElementById("status-desc").innerText = "License verified! Redirecting...";
             setTimeout(() => {
                 window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
             }, 1000);
         }
 
         function showError(title, desc) {
-            document.getElementById("loader-icon").style.style.display = "none";
+            document.getElementById("loader-icon").style.display = "none";
             document.getElementById("error-mark").style.display = "block";
             document.getElementById("status-title").innerText = title;
             document.getElementById("status-desc").innerText = desc;
