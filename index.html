@@ -8,7 +8,7 @@
     <style>
         body { background-color: #111111; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
         .loader { border: 4px solid #333; border-top: 4px solid #00ffcc; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(3600deg); } }
         .error-icon { color: #ff3366; font-size: 48px; display: none; margin-bottom: 15px; }
     </style>
 </head>
@@ -17,50 +17,49 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Verifying session data structure...</p>
+    <p id="status-desc">Validating live gateway permissions...</p>
 
     <script>
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
-        const initData = window.Telegram.WebApp.initData;
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
-        const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
+        // Telegram uygulamasından gelen gerçek, manipüle edilemez kullanıcı ID'si
+        const realTelegramId = initDataUnsafe.user ? initDataUnsafe.user.id.toString() : null;
 
-        // Admin ID'si (Her zaman doğrudan geçiş hakkı var)
-        const adminId = 5841291305;
+        // Butona tıklandığında linkin sonuna batan o parametre ID'si (?user=XXXXX)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('user');
 
-        if (initData && userId) {
-            
-            if (userId === adminId) {
-                // Admin ise sorgusuz sualsiz yönlendir
+        const adminId = "5841291305";
+
+        if (realTelegramId) {
+            if (realTelegramId === adminId) {
+                // Admin her zaman sorgusuz geçer
                 allowAccess();
             } else {
-                // Normal kullanıcılar için zaman kontrolü
-                const urlParams = new URLSearchParams(initData);
-                const authDate = parseInt(urlParams.get('auth_date'));
-                const currentTime = Math.floor(Date.now() / 1000);
-
-                // Eğer adam eski mesaja basıp girmeye çalışıyorsa (5 dakikadan eski veriyle) direkt engelle
-                if (currentTime - authDate > 300) { 
-                    showError("License Expired", "Your active session has ended. Please type /start in the bot again.");
-                } else {
+                // KRİTİK KONTROL: Eğer adam /remove edildiyse, bota tekrar tıklasa bile 
+                // linkteki parametre güncellenemez. Telegram'ın gerçek ID'si ile eşleşmesi gerekir.
+                // Eğer adam eski butondan sızmaya çalışıyorsa urlUserId ve realTelegramId doğrulaması çöker.
+                if (urlUserId && realTelegramId === urlUserId) {
                     allowAccess();
+                } else {
+                    showError("License Expired", "Your database license has been revoked by the administrator.");
                 }
             }
         } else {
-            showError("Access Denied", "Please open this app inside the Telegram Bot.");
+            showError("Access Denied", "Please open this application inside the Telegram Bot.");
         }
 
         function allowAccess() {
-            document.getElementById("status-desc").innerText = "License verified! Redirecting...";
+            document.getElementById("status-desc").innerText = "License verified! Redirecting to secure miner...";
             setTimeout(() => {
                 window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
             }, 1000);
         }
 
         function showError(title, desc) {
-            document.getElementById("loader-icon").style.display = "none";
+            document.getElementById("loader-icon").style.style.display = "none";
             document.getElementById("error-mark").style.display = "block";
             document.getElementById("status-title").innerText = title;
             document.getElementById("status-desc").innerText = desc;
