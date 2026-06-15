@@ -7,26 +7,13 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            background-color: #111111;
-            color: #ffffff;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            text-align: center;
-            padding: 20px;
+            background-color: #111111; color: #ffffff; font-family: sans-serif;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            height: 100vh; margin: 0; text-align: center; padding: 20px;
         }
         .loader {
-            border: 4px solid #333;
-            border-top: 4px solid #00ffcc;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            border: 4px solid #333; border-top: 4px solid #00ffcc; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         h2 { font-weight: 400; letter-spacing: 1px; margin: 10px 0; }
@@ -39,48 +26,37 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Verifying your license status, please wait...</p>
+    <p id="status-desc">Verifying your active token, please wait...</p>
 
     <script>
-        // Telegram arayüzünü başlat
         window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand(); // Ekranı tam boy yap
+        window.Telegram.WebApp.expand();
 
-        // Açmaya çalışan kullanıcının Telegram bilgilerini çek
+        // 1. Telegram'dan giriş yapan güncel kullanıcının ID'sini al
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
-        const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
+        const currentUserId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
 
-        if (!userId) {
-            // Eğer Telegram dışından normal tarayıcıyla girilmeye çalışılırsa direkt engelle
-            showError("Access Denied", "Please open this application directly from the official Warden Crypto Telegram Bot.");
+        // 2. Linkin sonundaki o gizli şifreyi (auth tokenı) oku
+        const urlParams = new URLSearchParams(window.location.search);
+        const incomingToken = urlParams.get('auth');
+
+        // Beklenen doğru şifre yapısını oluşturuyoruz
+        const expectedUserToken = "warden_active_" + currentUserId;
+        const expectedAdminToken = "warden_active_admin";
+
+        // GÜVENLİK KONTROLÜ: Linkteki şifre, içeri girmeye çalışan adamın ID'siyle eşleşiyor mu?
+        if (currentUserId && (incomingToken === expectedUserToken || incomingToken === expectedAdminToken)) {
+            document.getElementById("status-desc").innerText = "Token verified! Connecting to secure node...";
+            setTimeout(() => {
+                // Her şey doğruysa asıl siteye fırlat
+                window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
+            }, 1500);
         } else {
-            // Render'da çalışan botumuza gizlice canlı sorgu gönderiyoruz
-            // NOT: Buradaki linki kendi Render botunun linkiyle değiştireceğiz
-            fetch(`https://bot-jwt2.onrender.com/verify?user_id=${userId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === "allowed") {
-                        document.getElementById("status-desc").innerText = "License verified! Connecting to secure node...";
-                        // Kullanıcı yetkiliyse asıl mining sitesine yönlendir
-                        setTimeout(() => {
-                            window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
-                        }, 1000);
-                    } else {
-                        // Kullanıcı whitelist'ten silinmişse buraya düşecek
-                        showError("License Expired", "Your access to Warden Crypto has been revoked. Please contact the administrator to renew your license.");
-                    }
-                })
-                .catch(error => {
-                    // Sunucu yanıt vermezse veya beklenmedik bir hata olursa koruma amaçlı yine engelle
-                    showError("Connection Error", "Unable to verify license. Please restart the bot and try again.");
-                });
-        }
-
-        function showError(title, desc) {
+            // Şifre yanlışsa, eski mesajsa veya eşleşmiyorsa anında patlat
             document.getElementById("loader-icon").style.display = "none";
             document.getElementById("error-mark").style.display = "block";
-            document.getElementById("status-title").innerText = title;
-            document.getElementById("status-desc").innerText = desc;
+            document.getElementById("status-title").innerText = "License Expired";
+            document.getElementById("status-desc").innerText = "Your active session has ended or been revoked. Please contact the administrator.";
         }
     </script>
 </body>
