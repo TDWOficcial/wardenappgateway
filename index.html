@@ -17,13 +17,12 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Verifying your session token...</p>
+    <p id="status-desc">Verifying single-use session key...</p>
 
     <script>
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
-        // Telegram'ın o saniyede tarayıcıya fırlattığı ham açılış verisi
         const initData = window.Telegram.WebApp.initData;
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
         const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
@@ -32,20 +31,24 @@
 
         if (initData && userId) {
             if (userId === adminId) {
-                // Admin her zaman geçer
+                // Admin her zaman pürüzsüz geçer
                 allowAccess();
             } else {
-                // Telegram'ın ürettiği ham verinin içindeki zaman parametrelerini ayrıştırıyoruz
+                // TELEGRAM VERİSİNİN BENZERSİZ HASH DEĞERİNİ ALIYORUZ (Her tıklamada değişen imza)
                 const urlParams = new URLSearchParams(initData);
-                const authDate = parseInt(urlParams.get('auth_date')); // Butona ilk tıklandığı anın saniyesi
-                const currentTime = Math.floor(Date.now() / 1000); // Şu anki canlı saniye
+                const sessionHash = urlParams.get('hash');
 
-                // EĞER KULLANICI ESKİ MESAJDAKİ BUTONA BASTIYSA:
-                // Butonun tıklanma zamanı ile şu anki zaman arasında 60 saniyeden (1 dakika) fazla fark varsa geçersiz say.
-                if (!authDate || (currentTime - authDate > 60)) { 
-                    showError("License Expired", "Your active session has expired. Please go back to the bot and type /start to generate a new secure link.");
+                // Telefonun kalıcı tarayıcı hafızasını kontrol et (localStorage)
+                const usedKeys = JSON.parse(localStorage.getItem('warden_used_hashes') || '[]');
+
+                // EĞER BU BUTON/İMZA DAHA ÖNCE BİR KERE BİLE KULLANILDIYSA VEYA SAYFA YENİLENDİYSE:
+                if (usedKeys.includes(sessionHash)) {
+                    showError("License Expired", "This session has already been used. Please return to the bot and generate a new secure link via /start.");
                 } else {
-                    // Eğer buton taze ve yeni üretilmişse (yani adam silinmemiş ve bota yeni start vermişse) içeri al
+                    // Anahtar taze! Bir sonraki yenilemede engellemek için bu anahtarı hafızada "KULLANILDI" olarak işaretle
+                    usedKeys.push(sessionHash);
+                    localStorage.setItem('warden_used_hashes', JSON.stringify(usedKeys));
+                    
                     allowAccess();
                 }
             }
