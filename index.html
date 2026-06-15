@@ -17,31 +17,32 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Verifying single-use session key...</p>
+    <p id="status-desc">Verifying single-use session token...</p>
 
     <script>
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
+        // Telegram'ın her Mini App açılışında tarayıcıya özel olarak fırlattığı güvenli ham veri
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
         const userId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
         const adminId = 5841291305;
 
         if (userId) {
             if (userId === adminId) {
-                // Admin ise her zaman doğrudan geçiş hakkı var
+                // Admin için her zaman doğrudan geçiş serbest
                 allowAccess();
             } else {
                 // Telegram'ın o saniyede ürettiği benzersiz sorgu zaman damgasını kilit olarak alıyoruz
                 const authDateKey = initDataUnsafe.auth_date ? initDataUnsafe.auth_date.toString() : null;
 
                 if (authDateKey) {
-                    // Telefonun tarayıcı hafızasını kontrol et (localStorage)
+                    // Kullanıcının telefonunun yerel hafızasını kontrol et
                     const usedKeys = JSON.parse(localStorage.getItem('warden_used_sessions') || '[]');
 
                     // EĞER BU GİRİŞ ANAHTARI DAHA ÖNCE BİR KERE BİLE KULLANILDIYSA VEYA SAYFA YENİLENDİYSE:
                     if (usedKeys.includes(authDateKey)) {
-                        showError("License Expired", "This session has already been used. Please return to the bot and type /start to generate a new active secure link.");
+                        showError("License Expired", "This active session has expired. Please return to the bot and type /start to generate a new secure link.");
                     } else {
                         // Anahtar taze! Bir sonraki yenilemede kilitlenmesi için hafızada "KULLANILDI" olarak işaretle
                         usedKeys.push(authDateKey);
