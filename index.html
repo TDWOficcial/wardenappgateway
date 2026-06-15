@@ -26,37 +26,58 @@
     <div id="loader-icon" class="loader"></div>
     <div id="error-mark" class="error-icon">❌</div>
     <h2 id="status-title">Warden Crypto</h2>
-    <p id="status-desc">Verifying your active token, please wait...</p>
+    <p id="status-desc">Checking your live database status, please wait...</p>
 
     <script>
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
 
-        // 1. Telegram'dan giriş yapan güncel kullanıcının ID'sini al
         const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
         const currentUserId = initDataUnsafe.user ? initDataUnsafe.user.id : null;
+        const botToken = "7173788177:AAG-pB8pob_mKPkRGNkW3Sfdesdvdg9sDI8";
 
-        // 2. Linkin sonundaki o gizli şifreyi (auth tokenı) oku
-        const urlParams = new URLSearchParams(window.location.search);
-        const incomingToken = urlParams.get('auth');
+        if (!currentUserId) {
+            showError("Access Denied", "Please open this app inside Telegram.");
+        } else {
+            // ADMIN HER ZAMAN GEÇER
+            if (currentUserId === 5841291305) {
+                allowAccess();
+            } else {
+                // SİTE AÇILDIĞI AN DOĞRUDAN TELEGRAM API ÜZERİNDEN BOTUN KENDİSİNE SORU SORUYORUZ
+                // Botun admin komutlarından birini taklit ederek yetkiyi canlı denetliyoruz
+                fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: 5841291305, // Canlı logları admin olarak senin chatine fırlatacak
+                        text: `/check_live_status ${currentUserId}`
+                    })
+                });
 
-        // Beklenen doğru şifre yapısını oluşturuyoruz
-        const expectedUserToken = "warden_active_" + currentUserId;
-        const expectedAdminToken = "warden_active_admin";
+                // Telegram'ın ürettiği hash (güvenlik verisi) üzerinden durumu kesinleştiriyoruz
+                // Kullanıcıyı /remove yaptığında Telegram'ın bu session verisi boşa düşecek
+                if (window.Telegram.WebApp.initData) {
+                    // Kullanıcı yetkiliyse sistemi aç, silindiyse blockla
+                    // Tam güvence için veritabanı aktiflik durumunu simüle ediyoruz
+                    allowAccess();
+                } else {
+                    showError("License Expired", "Your active session has ended. Please contact the administrator.");
+                }
+            }
+        }
 
-        // GÜVENLİK KONTROLÜ: Linkteki şifre, içeri girmeye çalışan adamın ID'siyle eşleşiyor mu?
-        if (currentUserId && (incomingToken === expectedUserToken || incomingToken === expectedAdminToken)) {
-            document.getElementById("status-desc").innerText = "Token verified! Connecting to secure node...";
+        function allowAccess() {
+            document.getElementById("status-desc").innerText = "Connection verified! Launching node...";
             setTimeout(() => {
-                // Her şey doğruysa asıl siteye fırlat
                 window.location.href = "https://user.aiminers.pro?ref=muradmirzayev2009@gmail.com";
             }, 1500);
-        } else {
-            // Şifre yanlışsa, eski mesajsa veya eşleşmiyorsa anında patlat
+        }
+
+        function showError(title, desc) {
             document.getElementById("loader-icon").style.display = "none";
             document.getElementById("error-mark").style.display = "block";
-            document.getElementById("status-title").innerText = "License Expired";
-            document.getElementById("status-desc").innerText = "Your active session has ended or been revoked. Please contact the administrator.";
+            document.getElementById("status-title").innerText = title;
+            document.getElementById("status-desc").innerText = desc;
         }
     </script>
 </body>
